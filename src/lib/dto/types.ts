@@ -1,16 +1,33 @@
+import { Constructor } from "../../shared/types";
+
 export interface ValidationOptions {
     message?: string;
 }
 
-export interface IValidationError {
-    propertyKey: string;
-    message: string;
-}
+export type Validators = "number" | "string" | "boolean" | "array" | "integer" | "dto";
 
-type Validators = "number" | "string" | "boolean" | "array" | "integer";
-
-export interface IValidator {
+export type IValidator = {
     propertyKey: string;
     message: string
-    type: Validators;
-}
+} & ({
+    type: "dto"
+    dto: Constructor<any>
+} | {
+    type: "string",
+    min?: number,
+    max?: number
+} | {
+    type: "number",
+    min?: number,
+    max?: number
+} | {
+    type: "boolean"
+} | {
+    type: "array",
+    minItems?: number,
+    maxItems?: number
+} | {
+    type: "integer",
+    min?: number,
+    max?: number
+})
