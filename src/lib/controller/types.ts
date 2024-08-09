@@ -6,7 +6,7 @@ export enum ReflectKeys {
     Response = 'response',
     Method = 'method',
     Path = 'path',
-    Validatiors = 'validatiors',
+    Validators = 'validators',
 }
 
 export interface IController {

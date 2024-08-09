@@ -42,7 +42,7 @@ export function registerControllers(app: Hono, controllers: Constructor<any>[]) 
                         }
 
                         const dtoClass = args[bodyIndex];
-                        const validators: IValidator[] = Reflect.getMetadata(ReflectKeys.Validatiors, dtoClass.prototype);
+                        const validators: IValidator[] = Reflect.getMetadata(ReflectKeys.Validators, dtoClass.prototype);
                         const errors = validateData(body, validators)
                         console.log('-'.repeat(90))
                         if (Object.keys(errors).length > 0) {

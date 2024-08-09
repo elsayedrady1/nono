@@ -38,7 +38,7 @@ export function validateData(data: any = {}, validators: IValidator[]): AnyObjec
                 break;
             case 'dto': {
                 const dtoClass = validator.dto
-                const validators: IValidator[] = Reflect.getMetadata(ReflectKeys.Validatiors, dtoClass.prototype);
+                const validators: IValidator[] = Reflect.getMetadata(ReflectKeys.Validators, dtoClass.prototype);
                 const nestedErrors = validateData(value, validators)
 
                 if (Object.keys(nestedErrors).length > 0 && Object.values(nestedErrors).some(value => value !== undefined && value !== null)) {
