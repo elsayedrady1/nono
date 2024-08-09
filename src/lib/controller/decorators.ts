@@ -16,12 +16,14 @@ function createMethodDecorator(method: string) {
     };
 }
 
+// * Method Decorators (for request handlers methods)
 export const Get = createMethodDecorator('get')
 export const Put = createMethodDecorator('put')
 export const Patch = createMethodDecorator('patch')
 export const Delete = createMethodDecorator('delete')
 export const Post = createMethodDecorator('post')
 
+// * Parameter Decorators (for request handlers arguments)
 export function Body(): ParameterDecorator {
     return function (target, propertyKey, index) {
         Reflect.defineMetadata(ReflectKeys.Body, { propertyKey, index }, target, propertyKey!)

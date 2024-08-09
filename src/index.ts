@@ -1,104 +1,52 @@
 import { Hono } from 'hono'
-import { Body, Controller, Delete, Get, Patch, Post, Req, Res } from "./lib/controller/decorators"
-import { getArguments, getMethodKeys } from "./shared/utils"
-import 'reflect-metadata'
-import { Method, ReflectKeys } from "./lib/controller/types"
-import { IsArray, IsInt, IsNumber, IsString } from "./lib/dto/decorators"
-import { join } from 'path';
-import { IValidator } from './lib/dto/types'
-import signale, { DefaultMethods } from 'signale'
-import { validateData } from './lib/dto'
+import { Body, Controller, Get, Post, Req, Res } from "./lib/controller/decorators"
+import { registerControllers } from './lib/controller'
+import { IsInt, IsString, Type } from './lib/dto/decorators'
 
 const app = new Hono()
 
-class GreetDto {
-    @IsString()
-    public name: string
+type Address = {
+    country: string;
+    governorate: string
+}
 
-    @IsArray({ message: "This shit should be array" })
-    public hobbies: string[]
+type User = {
+    name: string;
+    age: number;
+}
+
+class AddressDto {
+    @IsString({ message: "Invalid country" })
+    public country: string
+    @IsString({ message: "Invalid governorate" })
+    public governorate: string
 }
 class UserDto {
     @IsString({ message: "Invalid username" })
     public name: string
     @IsInt()
     public age: number
+
+    @Type(AddressDto)
+    address: Address
+}
+class GreetDto {
+    @IsString({ message: "Invalid greeting string" })
+    greeting: string;
+
+    @Type(UserDto)
+    user: User
 }
 
 @Controller({ path: '/' })
+
 class AppController {
     @Get('/')
     greetUser(@Req() req: Request, @Body() body: GreetDto, @Res() res: Response) { }
     @Post('/')
-    addUser(@Req() req: Request, @Res() res: Response, @Body() body: UserDto) { }
+    addUser(@Req() req: Request, @Res() res: Response, @Body() body: GreetDto) { }
 }
 
-@Controller({ path: '/test' })
-class WebController {
-    @Patch('/one')
-    greetUser(@Req() req: Request, @Body() body: UserDto, @Res() res: Response) { }
-    @Delete('/')
-    addUser(@Req() req: Request, @Res() res: Response, @Body() body: UserDto) { }
-}
-
-const controllers = [AppController, WebController]
-
-controllers.forEach((Controller) => {
-    const controller = new Controller();
-    const prototype = Controller.prototype;
-
-    const methodKeys = getMethodKeys(prototype);
-    methodKeys.forEach((key: string) => {
-        const routeHandler: Function = (prototype as any)[key];
-        if (!routeHandler) return;
-
-        const args = getArguments(prototype, key);
-        const method: Method = Reflect.getMetadata(ReflectKeys.Method, prototype, key);
-        const path: string = Reflect.getMetadata(ReflectKeys.Path, prototype, key);
-        const parsedPath = join((controller as any).path, path).replace(/\\+/g, '/').trim();
-
-        app[method](parsedPath, async (c) => {
-            const { method: m } = c.req;
-            const userAgent = c.req.header('user-agent') || '';
-
-            signale.start(`Incoming request from ${Controller.name} [${m}] - ${userAgent}`)
-
-            const pushedArgs = await Promise.all(args.map(async (name: string, argIndex: number, args) => {
-                const bodyIndex = Reflect.getMetadata(ReflectKeys.Body, prototype, key)?.index;
-                if (Reflect.getMetadata(ReflectKeys.Request, prototype, key)?.index === argIndex) return c.req;
-                if (Reflect.getMetadata(ReflectKeys.Response, prototype, key)?.index === argIndex) return c.res;
-                if (bodyIndex === argIndex) {
-                    let body: object | null;
-                    try {
-                        body = await c.req.json();
-                    } catch (error) {
-                        return null;
-                    }
-
-                    const dtoClass = args[bodyIndex];
-                    const validators: IValidator[] = Reflect.getMetadata(ReflectKeys.Validatiors, dtoClass.prototype);
-                    const errors = validateData(body, validators)
-                    console.log('-'.repeat(90))
-                    if (errors.length > 0) {
-                        errors.map((err) => {
-                            signale.error(err.message)
-                        })
-                    } else {
-                        signale.success("Validation Passed!")
-                    }
-                    return body;
-                }
-                return undefined;
-            }));
-
-            try {
-                await routeHandler.apply(controller, pushedArgs);
-                signale.complete(`Resolved request from ${Controller.name} has resolved [${m}]`)
-            } catch (err) {
-                signale.error(`Resolved request from ${Controller.name}[${m}]`);
-            }
-        })
-    });
-});
+registerControllers(app, [AppController])
 
 export default app;
