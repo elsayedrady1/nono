@@ -6,7 +6,7 @@ import { Method, ReflectKeys } from "./lib/controller/types"
 import { IsArray, IsInt, IsNumber, IsString } from "./lib/dto/decorators"
 import { join } from 'path';
 import { IValidator } from './lib/dto/types'
-import signale from 'signale'
+import signale, { DefaultMethods } from 'signale'
 import { validateData } from './lib/dto'
 
 const app = new Hono()
@@ -28,30 +28,19 @@ class UserDto {
 @Controller({ path: '/' })
 class AppController {
     @Get('/')
-    greetUser(@Req() req: Request, @Body() body: GreetDto, @Res() res: Response) {
-        // console.log("[GET] AppController:")
-        console.log(body)
-    }
+    greetUser(@Req() req: Request, @Body() body: GreetDto, @Res() res: Response) { }
     @Post('/')
-    addUser(@Req() req: Request, @Res() res: Response, @Body() body: UserDto) {
-        // console.log("[POST] AppController:")
-        // console.log(body)
-    }
+    addUser(@Req() req: Request, @Res() res: Response, @Body() body: UserDto) { }
 }
 
 @Controller({ path: '/test' })
 class WebController {
     @Patch('/one')
-    greetUser(@Req() req: Request, @Body() body: UserDto, @Res() res: Response) {
-        console.log("[PATCH] WebController:")
-        console.log(body)
-    }
+    greetUser(@Req() req: Request, @Body() body: UserDto, @Res() res: Response) { }
     @Delete('/')
-    addUser(@Req() req: Request, @Res() res: Response, @Body() body: UserDto) {
-        console.log("[DELETE] WebController:")
-        console.log(body)
-    }
+    addUser(@Req() req: Request, @Res() res: Response, @Body() body: UserDto) { }
 }
+
 const controllers = [AppController, WebController]
 
 controllers.forEach((Controller) => {
@@ -69,6 +58,11 @@ controllers.forEach((Controller) => {
         const parsedPath = join((controller as any).path, path).replace(/\\+/g, '/').trim();
 
         app[method](parsedPath, async (c) => {
+            const { method: m } = c.req;
+            const userAgent = c.req.header('user-agent') || '';
+
+            signale.start(`Incoming request from ${Controller.name} [${m}] - ${userAgent}`)
+
             const pushedArgs = await Promise.all(args.map(async (name: string, argIndex: number, args) => {
                 const bodyIndex = Reflect.getMetadata(ReflectKeys.Body, prototype, key)?.index;
                 if (Reflect.getMetadata(ReflectKeys.Request, prototype, key)?.index === argIndex) return c.req;
@@ -97,8 +91,13 @@ controllers.forEach((Controller) => {
                 return undefined;
             }));
 
-            return routeHandler.apply(controller, pushedArgs);
-        });
+            try {
+                await routeHandler.apply(controller, pushedArgs);
+                signale.complete(`Resolved request from ${Controller.name} has resolved [${m}]`)
+            } catch (err) {
+                signale.error(`Resolved request from ${Controller.name}[${m}]`);
+            }
+        })
     });
 });
 
